@@ -1,0 +1,54 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: maven-task
+spec:
+  resources:
+    inputs:
+      - name: source
+        type: git
+  steps:
+    - name: build-step
+      image: maven:3-alpine
+      workingDir: $(resources.inputs.source.path)
+      command:
+        - mvn
+        - -B
+        - clean
+        - package
+        - -DskipTests
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: maven-build
+spec:
+  resources:
+    - name: pipeline-git
+      type: git
+  tasks:
+    - name: mvn
+      taskRef:
+        name: maven-task
+      resources:
+        inputs:
+          - name: source
+            resource: pipeline-git
+---
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  name: maven-run
+spec:
+  pipelineRef:
+    name: maven-build
+  resources:
+    - name: pipeline-git
+      resourceSpec:
+        type: git
+        params:
+          - name: revision
+            value: master
+          - name: url
+            value: https://github.com/jenkinsci/kubernetes-plugin.git
